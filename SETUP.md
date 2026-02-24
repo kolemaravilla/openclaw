@@ -299,42 +299,184 @@ curl -s https://api.z.ai/api/coding/paas/v4/models \
 
 ### How to give Brock access to accounts
 
-**Gmail:**
+#### Gmail
+
 ```bash
-# openclaw walks you through Gmail OAuth on first use
-# Or configure manually:
-# 1. Create OAuth credentials at console.cloud.google.com
-# 2. Enable Gmail API
-# 3. Run: openclaw auth add gmail
-# 4. Complete the browser OAuth flow
-# Token is stored in auth-profiles.json automatically
+# Option A: Let openclaw walk you through it (recommended)
+openclaw auth add gmail
+
+# Option B: Manual setup
+# 1. Go to console.cloud.google.com → APIs & Services → Credentials
+# 2. Create OAuth 2.0 Client ID (type: Desktop App)
+# 3. Enable the Gmail API (APIs & Services → Library → search "Gmail API" → Enable)
+# 4. Download the client credentials JSON
+# 5. Run: openclaw auth add gmail --credentials-file ~/Downloads/client_secret_xxx.json
+# 6. A browser window opens — sign in with the Gmail account you want Brock to use
+# 7. Approve the permissions (read, send, manage labels — whatever you want him to have)
+# 8. Token is stored in auth-profiles.json automatically
 ```
 
-**GitHub:**
+To store the Gmail **password** itself (for services that need it, like IMAP or app-specific logins):
+
 ```bash
-# Option A: Device code flow (recommended)
+# Store Gmail credentials in macOS Keychain
+security add-generic-password \
+  -a "brock@gmail.com" \
+  -s "brock-gmail" \
+  -l "Brock Gmail" \
+  -w
+# ↑ The -w flag with no argument prompts you to type the password interactively
+#   (it won't appear in terminal history)
+
+# Verify it was saved
+security find-generic-password -a "brock@gmail.com" -s "brock-gmail"
+```
+
+#### GitHub
+
+```bash
+# Option A: Device code flow (recommended — no password stored)
 openclaw auth add github
+# Follow the prompts: go to github.com/login/device, enter the code shown
 
 # Option B: Personal access token
-# Create at github.com/settings/tokens
-# Add to .env: GITHUB_TOKEN=ghp_...
+# 1. Go to github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+# 2. Create token with the repos/permissions Brock needs
+# 3. Store it:
+security add-generic-password \
+  -a "brock-github" \
+  -s "brock-github-pat" \
+  -l "Brock GitHub PAT" \
+  -w
+# Paste the token when prompted
+
+# Also add to .env so openclaw can use it directly:
+echo 'GITHUB_TOKEN=ghp_yourTokenHere' >> ~/.openclaw/.env
 ```
 
-**iCloud / iMessage:**
-- Uses macOS system credentials — log into iCloud on the Mac Mini normally
-- openclaw's `imsg` CLI reads from Keychain
-- No separate credential setup needed
+#### iCloud / iMessage
 
-**Passwords / Usernames / Phone Numbers:**
-- Do NOT put raw passwords in config files
-- For services that need username/password (not OAuth), use the macOS Keychain:
-  ```bash
-  # Store a credential in Keychain
-  security add-generic-password -a "brock-gmail" -s "gmail" -w "the-password" -T ""
+iCloud uses the macOS system Keychain — there's no separate credential to configure.
 
-  # openclaw can access Keychain entries via the exec tool
-  ```
-- Or store references in `auth-profiles.json` and let Brock look them up at runtime
+```bash
+# Step 1: Sign into iCloud on the Mac Mini
+# System Settings → Apple ID → Sign in with the Apple ID you want Brock to use
+# This stores the credentials in the system Keychain automatically
+
+# Step 2: Enable iMessage
+# Open Messages.app → Settings → iMessage → Sign in (if not already)
+# This registers the Mac Mini for iMessage delivery
+
+# Step 3: Verify openclaw can reach it
+# openclaw uses the `imsg` CLI which reads from the system Messages database
+# No additional password storage needed — it piggybacks on the signed-in session
+
+# If you want Brock to have his OWN Apple ID (separate from yours):
+# 1. Create a new Apple ID at appleid.apple.com
+# 2. Sign into that Apple ID on the Mac Mini
+# 3. Note: a Mac can only be signed into ONE iCloud account at a time
+#    If you need your personal iCloud too, consider using a separate macOS user account
+```
+
+To store the iCloud **password** for reference (e.g., if Brock needs to re-auth):
+
+```bash
+security add-generic-password \
+  -a "brock@icloud.com" \
+  -s "brock-icloud" \
+  -l "Brock iCloud" \
+  -w
+# Type the password when prompted
+```
+
+#### Storing Any Username / Password / Phone Number
+
+**Rule: NEVER put raw passwords in config files, .env, or git.**
+
+Use macOS Keychain for everything. Here's the pattern:
+
+```bash
+# ── Store a credential ──────────────────────────────────────────
+
+# Generic pattern:
+security add-generic-password \
+  -a "<account-identifier>" \   # e.g., email address, username
+  -s "<service-name>" \         # e.g., "brock-gmail", "brock-github"
+  -l "<human-readable-label>" \ # e.g., "Brock Gmail Password"
+  -w                            # prompts for password (no shell history)
+
+# Examples:
+
+# Gmail password
+security add-generic-password -a "brock@gmail.com" -s "brock-gmail" -l "Brock Gmail" -w
+
+# GitHub PAT
+security add-generic-password -a "brock-github" -s "brock-github-pat" -l "Brock GitHub" -w
+
+# iCloud password
+security add-generic-password -a "brock@icloud.com" -s "brock-icloud" -l "Brock iCloud" -w
+
+# Phone number (for reference — not really a "secret" but keeps it out of configs)
+security add-generic-password -a "brock-phone-cn" -s "brock-phone-china" -l "Brock CN Phone" -w
+# When prompted, type: +8613812345678
+
+# Any other service (generic pattern)
+security add-generic-password -a "brock" -s "brock-<service>" -l "Brock <Service>" -w
+
+
+# ── Retrieve a credential ──────────────────────────────────────
+
+# Show metadata (no password)
+security find-generic-password -a "brock@gmail.com" -s "brock-gmail"
+
+# Show metadata AND password (prints to terminal — careful)
+security find-generic-password -a "brock@gmail.com" -s "brock-gmail" -w
+
+# Brock can retrieve these at runtime via openclaw's exec tool:
+#   exec: security find-generic-password -a "brock@gmail.com" -s "brock-gmail" -w
+# (This is how he accesses credentials when he needs them for a task)
+
+
+# ── Update a credential ────────────────────────────────────────
+
+# Delete the old one, then add the new one
+security delete-generic-password -a "brock@gmail.com" -s "brock-gmail"
+security add-generic-password -a "brock@gmail.com" -s "brock-gmail" -l "Brock Gmail" -w
+
+
+# ── List all of Brock's credentials ────────────────────────────
+
+security dump-keychain | grep -A 5 "brock-"
+```
+
+**Summary of what to store:**
+
+| Credential | Account (`-a`) | Service (`-s`) | Notes |
+|------------|----------------|----------------|-------|
+| Gmail password | `brock@gmail.com` | `brock-gmail` | For IMAP/app-password if needed |
+| Gmail app password | `brock@gmail.com` | `brock-gmail-app` | If using 2FA, generate at myaccount.google.com |
+| GitHub PAT | `brock-github` | `brock-github-pat` | Fine-grained token |
+| iCloud password | `brock@icloud.com` | `brock-icloud` | For re-auth if session expires |
+| Chinese phone # | `brock-phone-cn` | `brock-phone-china` | +86 number for SMS relay |
+| z.ai API key | `brock-zai` | `brock-zai-api` | Backup; primary is in .env |
+| OpenAI API key | `brock-openai` | `brock-openai-api` | Backup; primary is in .env |
+
+**How Brock accesses these at runtime:**
+
+openclaw's `exec` tool can run `security find-generic-password -w` to retrieve any stored credential. This means:
+- Brock runs a shell command to fetch the password
+- It's never stored in openclaw's config or memory files
+- The credential exists only in Keychain (encrypted, locked to the Mac Mini's login)
+- If the Mac Mini is locked/rebooted, Keychain access requires the login password
+
+**Important:** In `lobsterBucket/GOVERNANCE.md`, add rules about which credentials Brock can access autonomously vs. which require your approval. For example:
+```markdown
+## Credential Access Rules
+- GitHub PAT: autonomous (for code tasks)
+- Gmail: autonomous for reading, ask before sending
+- iCloud: ask before any action
+- Phone number: receive-only, never share externally
+```
 
 ---
 
