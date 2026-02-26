@@ -2,123 +2,176 @@
 
 This document defines how Brock's model stack is organized, when each tier is used, and how failover works. It lives in openclaw because **model provider configuration is a platform concern** — openclaw owns the provider definitions, API keys, failover chains, and runtime model selection.
 
-What lobsterBucket governs: *usage policy* (e.g., "don't use o3 for trivial tasks", "prefer local during quiet hours"). What openclaw governs: *which providers exist, how to reach them, and what happens when one fails*.
+What lobsterBucket governs: *usage policy* (e.g., "don't burn coding tokens on formatting", "prefer bulk tier during quiet hours"). What openclaw governs: *which providers exist, how to reach them, and what happens when one fails*.
 
 ---
 
-## The Three Tiers
+## The Four Tiers
 
-### Fast Tier — Local Ollama (`local/*`)
+### Code Tier — z.ai GLM-5 (`zai/*`)
 
 | Property | Value |
 |----------|-------|
-| Provider | Ollama (localhost) |
-| Models | GLM-5 (quantized), GLM-4.7, or smaller depending on hardware |
-| Cost | $0 |
-| Latency | Low (on-device) |
-| Context | 128K |
-| Reasoning | Yes (GLM-5/4.7) |
+| Provider | z.ai (Zhipu AI) Coding Platform |
+| Endpoint | `https://api.z.ai/api/coding/paas/v4` (overseas) |
+|          | `https://open.bigmodel.cn/api/coding/paas/v4` (China) |
+| Model ID | `glm-5` |
+| Params | 744B total (MoE), 40B active |
+| Cost | $1.00/$3.20 per 1M tokens (input/output) |
+| Cached | $0.20 per 1M input (cache hit) |
+| Context | 200K tokens |
+| Max Output | 128K tokens |
+| Reasoning | Yes (`thinking.type: "enabled"`) |
+| Input | Text only (use GLM-4.6V for vision) |
+| API compat | OpenAI-compatible |
 
-**Use for:** Routine tasks — daily briefings, job filtering, message formatting, quick lookups, draft generation, triage. Anything where speed matters more than depth and the task doesn't require multimodal input.
+**Use for:** High-stakes coding, long-context agent runs, PR reviews, complex refactoring, system design, multi-file edits. This is the primary model for any task where code quality is critical.
 
-**Hardware constraints:**
+**Why GLM-5 for coding:** 77.8% on SWE-bench Verified (open-source SOTA), 56.2% on Terminal-Bench 2.0. The z.ai Coding Plan endpoint is specifically optimized for coding tasks. At $1.00/$3.20 per 1M tokens, it's ~5x cheaper than Claude Opus on input.
 
-| Mac Mini RAM | Recommended Model | Notes |
-|--------------|-------------------|-------|
-| 16GB | qwen2.5:7b or glm-4.5-air | Fast tier only, lean on z.ai for heavy work |
-| 32GB | glm-4.7 (quantized) | Good balance of capability and fit |
-| 64GB+ | glm-5 (quantized) | Full local reasoning capability |
-
-**Personality note:** Local models need more reinforcement than cloud APIs. If Brock drifts to generic assistant behavior on local, the fix is in SOUL.md — repeat key behavioral rules, add negative examples, use shorter imperative phrasing. This is a prompt engineering concern, not a model routing concern.
+**GFW note:** z.ai endpoints are accessible from mainland China without tunneling.
 
 ---
 
-### Strong Tier — z.ai API (`zai/*`)
+### Bulk Tier — DeepSeek V3.2 (`deepseek/*`)
 
 | Property | Value |
 |----------|-------|
-| Provider | z.ai Coding Platform |
-| Endpoint | `https://api.z.ai/api/coding/paas/v4` |
-| Models | GLM-5 (primary), GLM-4.7 (fallback) |
-| Cost | ~$0.002/1K input, ~$0.006/1K output |
-| Latency | Medium (API call) |
-| Context | 128K |
-| Reasoning | Yes |
-| Input | Text + Image |
+| Provider | DeepSeek |
+| Endpoint | `https://api.deepseek.com/v1` |
+| Model IDs | `deepseek-chat` (non-thinking), `deepseek-reasoner` (thinking) |
+| Cost | $0.28/$0.42 per 1M tokens (cache miss input/output) |
+| Cached | $0.028 per 1M input (cache hit — automatic, no config needed) |
+| Context | 128K tokens |
+| Max Output | 8K (chat), 64K (reasoner) |
+| Reasoning | `deepseek-reasoner` only |
+| Input | Text only |
+| Rate limits | No explicit limits (dynamic throttling under load) |
+| API compat | OpenAI-compatible |
 
-**Use for:** Code generation, deep research, complex analysis, agentic workflows, multi-step reasoning, anything where quality matters. This is the default primary for most agent tasks.
+**Use for:** Cheap bulk work, fast iterations, drafting, summarization, formatting, triage, daily briefings, job filtering. Anything where cost matters more than cutting-edge quality.
 
-**Why z.ai over running GLM-5 locally:** The z.ai Coding Plan endpoint is optimized for coding tasks and cheaper than the general API. Unless your Mac Mini has 64GB+ RAM, running GLM-5 locally at full precision isn't practical — z.ai gives you the full model without hardware constraints.
+**Why DeepSeek:** At $0.28/$0.42 per 1M tokens it's absurdly cheap — 95% less than GPT-4o. Cache hits drop input to $0.028/1M, which means repeated-context workflows (like Brock's scheduled tasks with stable system prompts) cost almost nothing. The V3.2 unified model backs both `deepseek-chat` and `deepseek-reasoner`, so you get thinking mode at the same price.
 
-**GFW note:** If operating from behind the Great Firewall, z.ai endpoints are generally accessible from mainland China (it's a Chinese service). This is an advantage over OpenAI/Anthropic which require tunneling.
+**GFW note:** DeepSeek is a Chinese service, no tunnel needed from mainland.
 
 ---
 
-### Backup Tier — OpenAI (`openai/*`)
+### Reasoning Tier — Kimi K2 Thinking (`moonshot/*`)
+
+| Property | Value |
+|----------|-------|
+| Provider | Moonshot AI |
+| Endpoint | `https://api.moonshot.ai/v1` |
+| Model IDs | `kimi-k2-thinking` (standard), `kimi-k2-thinking-turbo` (fast) |
+| Params | 1T total (MoE), 32B active |
+| Cost | $0.60/$2.50 per 1M tokens (standard) |
+| Cached | $0.15 per 1M input (cache hit — automatic) |
+| Turbo | $1.15/$8.00 per 1M tokens (up to 100 tok/s) |
+| Context | 256K tokens |
+| Reasoning | Yes (returns `reasoning_content` in response) |
+| Input | Text only (K2.5 adds multimodal) |
+| API compat | OpenAI-compatible and Anthropic-compatible |
+
+**Use for:** Very long input analysis, long-horizon reasoning, big agentic workflows that run hundreds of steps. Research deep-dives, multi-document synthesis, competition-level problem solving.
+
+**Why Kimi K2 Thinking:** Purpose-built as a thinking agent — end-to-end trained to interleave chain-of-thought reasoning with function calls. It can maintain stable tool-use across 200-300 sequential calls without drift. The 256K context window is the largest in this stack. At $0.60/$2.50 it slots between DeepSeek (bulk) and GLM-5 (code) on cost.
+
+**Important:** When using thinking mode with tool calls, you must preserve `reasoning_content` in the message history. Stripping it causes 400 errors. openclaw handles this automatically.
+
+**GFW note:** Moonshot is a Chinese service, no tunnel needed.
+
+---
+
+### Fallback Tier — OpenAI (`openai/*`)
 
 | Property | Value |
 |----------|-------|
 | Provider | OpenAI |
 | Endpoint | `https://api.openai.com/v1` |
 | Models | gpt-4o (general), o3 (reasoning) |
-| Cost | gpt-4o: ~$0.0025/$0.01 per 1K; o3: ~$0.01/$0.04 per 1K |
-| Latency | Medium-High |
+| Cost | gpt-4o: $2.50/$10.00 per 1M; o3: $10.00/$40.00 per 1M |
 | Context | 128K (gpt-4o), 200K (o3) |
 | Reasoning | o3 only |
 | Input | Text + Image |
+| API compat | Native OpenAI |
 
-**Use for:** Fallback when z.ai is down or rate-limited. Also useful when you want a different reasoning style — o3's chain-of-thought approach sometimes catches things GLM-5 misses on hard problems.
+**Use for:** Fallback when all three Chinese providers are down or rate-limited. Also the only provider in this stack with native vision support via API, so image-related tasks route here.
 
-**Cost warning:** o3 is 5-7x more expensive than z.ai GLM-5. Use it deliberately, not as a default. gpt-4o is reasonable as a general fallback.
+**Cost warning:** gpt-4o is 9x more expensive than DeepSeek on output. o3 is 95x more expensive than DeepSeek. These are fallback-only unless explicitly invoked.
 
 **GFW note:** OpenAI requires a tunnel (Cloudflare Tunnel, Tailscale, WireGuard to HK/SG, or frp) from mainland China. Ensure your tunnel is stable before relying on this as a failover target.
 
 ---
 
-### Optional: Anthropic (`anthropic/*`)
+### Optional: Local Ollama (`local/*`)
 
-Not in the default config but supported and recommended for users who have a subscription.
+Not in the default tier hierarchy but useful if you have the hardware.
 
 | Property | Value |
 |----------|-------|
-| Provider | Anthropic |
-| Models | claude-opus-4-6, claude-sonnet-4-6 |
-| Cost | Varies by plan (Pro/Max subscription recommended) |
-| Context | 200K |
-| Reasoning | Yes |
-| Input | Text + Image |
+| Provider | Ollama (localhost) |
+| Models | GLM-5 (quantized), GLM-4.7, DeepSeek-V3 (quantized), Kimi-K2 |
+| Cost | $0 |
+| Context | Model-dependent (typically 128K) |
 
-**Why consider it:** Opus 4.6 has strong long-context performance and better prompt-injection resistance than most alternatives. If you have Anthropic Pro/Max, adding it as a fallback (or even primary for certain tasks) is worthwhile.
+**Hardware constraints:**
 
-To add: uncomment the Anthropic section in `.env`, add the provider block to `openclaw.json`, and insert into the fallback chain.
+| Mac Mini RAM | Recommended Model | Notes |
+|--------------|-------------------|-------|
+| 16GB | qwen2.5:7b or glm-4.5-air | Light tasks only |
+| 32GB | glm-4.7 (quantized) | Good for fast-tier work |
+| 64GB+ | glm-5 (quantized) or kimi-k2 | Full local capability |
+
+**Personality note:** Local models need more reinforcement than cloud APIs. If Brock drifts to generic assistant behavior on local, the fix is in SOUL.md — repeat key behavioral rules, add negative examples, use shorter imperative phrasing.
 
 ---
 
-## Failover Chain
+## Failover Chains
 
-The default failover chain for Brock's agent:
+### Default chain (coding and general):
 
 ```
-Primary:   zai/glm-5
+Primary:    zai/glm-5
     ↓ (if unavailable)
-Fallback 1: zai/glm-4.7
+Fallback 1: moonshot/kimi-k2-thinking
+    ↓ (if unavailable)
+Fallback 2: deepseek/deepseek-chat
+    ↓ (if unavailable)
+Fallback 3: openai/gpt-4o
+```
+
+### Bulk/fast chain (cheap tasks):
+
+```
+Primary:    deepseek/deepseek-chat
+    ↓ (if unavailable)
+Fallback 1: moonshot/kimi-k2-thinking
     ↓ (if unavailable)
 Fallback 2: openai/gpt-4o
+```
+
+### Reasoning chain (hard problems):
+
+```
+Primary:    moonshot/kimi-k2-thinking
     ↓ (if unavailable)
-Fallback 3: local/glm-5 (or whatever's pulled in Ollama)
+Fallback 1: zai/glm-5
+    ↓ (if unavailable)
+Fallback 2: openai/o3
 ```
 
-Failover is automatic — openclaw's model selection layer handles it. The agent doesn't need to know which provider is serving; it just sends the request and gets a response.
-
-**Image model chain** (for tasks requiring vision):
+### Image chain (vision tasks):
 
 ```
-Primary:   zai/glm-5
-    ↓
-Fallback:  openai/gpt-4o
+Primary:    openai/gpt-4o
+    ↓ (if unavailable)
+Fallback:   openai/o3
 ```
 
-Local Ollama models typically don't support image input, so they're excluded from the image fallback chain.
+GLM-5, DeepSeek, and Kimi K2 are all text-only via API. Vision tasks must route to OpenAI (or optionally GLM-4.6V / Kimi K2.5 if added later).
+
+Failover is automatic — openclaw's model selection layer handles it.
 
 ---
 
@@ -128,12 +181,14 @@ For convenience in configs and CLI:
 
 | Alias | Resolves To | Notes |
 |-------|-------------|-------|
-| `glm5` | zai/glm-5 | Default strong model |
+| `glm5` | zai/glm-5 | Code tier primary |
+| `ds` | deepseek/deepseek-chat | Bulk tier (non-thinking) |
+| `dsr` | deepseek/deepseek-reasoner | Bulk tier (thinking) |
+| `kimi` | moonshot/kimi-k2-thinking | Reasoning tier |
+| `kimi-turbo` | moonshot/kimi-k2-thinking-turbo | Fast reasoning |
+| `gpt` | openai/gpt-4o | Fallback (general) |
+| `o3` | openai/o3 | Fallback (reasoning, expensive) |
 | `local` | local/glm-5 | Whatever's running in Ollama |
-| `gpt` | openai/gpt-4o | General backup |
-| `o3` | openai/o3 | Reasoning backup (expensive) |
-| `opus` | anthropic/claude-opus-4-6 | Optional, needs subscription |
-| `sonnet` | anthropic/claude-sonnet-4-6 | Optional, good value |
 
 Use aliases in agent configs and CLI commands: `openclaw agent --model glm5 --message "..."`.
 
@@ -141,42 +196,41 @@ Use aliases in agent configs and CLI commands: `openclaw agent --model glm5 --me
 
 ## Command-to-Tier Routing (Discord)
 
-When Brock receives commands via Discord (`!brock <command>` or `@Brock <command>`), the model tier selection determines cost and quality. This mapping is defined by lobsterBucket's governance rules, but openclaw needs to know the tier assignments to route correctly.
+When Brock receives commands via Discord (`!brock <command>` or `@Brock <command>`), the model tier selection determines cost and quality.
 
-| Command | Model Tier | Why | Cooldown |
-|---------|-----------|-----|----------|
-| `status` | fast (local) | Simple state query, no reasoning needed | 30s |
-| `brief` | fast (local) | Formatting/summarization of pre-gathered data | 300s |
-| `research <topic>` | **strong** (zai) | Deep research requires reasoning + web search | 60s |
-| `jobs` | fast (local) | Structured search against known criteria | 300s |
-| `task <desc>` | fast (local) | Ad hoc routing, ACK is fast then async processing | 10s |
-| `review <PR#>` | **strong** (zai) | Code review requires deep analysis | 60s |
-| `help` | fast (local) | Static response, minimal inference | 10s |
+| Command | Model Tier | Routes To | Cooldown |
+|---------|-----------|-----------|----------|
+| `status` | bulk | `deepseek/deepseek-chat` | 30s |
+| `brief` | bulk | `deepseek/deepseek-chat` | 300s |
+| `research <topic>` | **reasoning** | `moonshot/kimi-k2-thinking` | 60s |
+| `jobs` | bulk | `deepseek/deepseek-chat` | 300s |
+| `task <desc>` | bulk | `deepseek/deepseek-chat` | 10s |
+| `review <PR#>` | **code** | `zai/glm-5` | 60s |
+| `help` | bulk | `deepseek/deepseek-chat` | 10s |
 
-**How this works in practice:**
+**How this works:**
 - lobsterBucket's `PLAYBOOK.md` defines which commands exist and their tier assignments
-- When a command arrives, Brock's session selects the model tier based on the command type
-- openclaw handles the actual model routing (fast → `local/glm-5`, strong → `zai/glm-5`)
-- If the selected tier is unavailable, openclaw's failover chain kicks in automatically
-- Cooldowns are enforced by lobsterBucket governance, not by openclaw's rate limiter
+- openclaw handles the actual model routing per tier
+- If the selected tier is unavailable, the appropriate failover chain kicks in
+- Cooldowns are enforced by lobsterBucket governance
 
-**Cost impact:** Most commands use the fast/local tier ($0). Only `research` and `review` hit the strong tier (z.ai API). At typical usage (~10 commands/day), the Discord command overhead is negligible — under $1/mo.
+**Cost impact:** Most commands use DeepSeek bulk tier (~$0.00 per command). `research` uses Kimi K2 Thinking (~$0.002 per command). `review` uses GLM-5 (~$0.005 per command). At typical usage (~10 commands/day), Discord commands cost under $1/mo total.
 
 ---
 
 ## Cost Estimation
 
-Rough monthly costs for a typical personal assistant workload (assuming moderate daily use):
+Rough monthly costs for a typical personal assistant workload:
 
 | Tier | Monthly Estimate | Notes |
 |------|-----------------|-------|
-| Local | $0 | Electricity only |
-| z.ai GLM-5 | $5–20 | Varies with coding task volume |
-| OpenAI gpt-4o (fallback) | $1–5 | Only used during z.ai outages |
-| OpenAI o3 | $0–10 | Only if explicitly invoked for hard problems |
-| **Total** | **$6–35/mo** | Heavily depends on usage patterns |
+| DeepSeek (bulk) | $0.50–3 | Handles majority of routine work |
+| z.ai GLM-5 (code) | $5–20 | Varies with coding task volume |
+| Kimi K2 (reasoning) | $2–10 | Deep research and long-horizon tasks |
+| OpenAI gpt-4o (fallback) | $0–5 | Only during outages or vision tasks |
+| **Total** | **$8–38/mo** | Heavily depends on usage patterns |
 
-If you add Anthropic Pro ($20/mo) or Max ($100/mo), that's a flat subscription cost on top — but it gives you high-quality fallback without per-token worry.
+The key cost optimization: DeepSeek's cache hits at $0.028/1M make all of Brock's scheduled/repeated-context tasks nearly free. The expensive tiers (GLM-5, Kimi K2) only fire for coding and deep reasoning.
 
 ---
 
@@ -188,7 +242,7 @@ If you add Anthropic Pro ($20/mo) or Max ($100/mo), that's a flat subscription c
 | Failover chain | openclaw (`agents.defaults.model`) | Primary → fallback ordering |
 | Model aliases | openclaw (`agents.defaults.models`) | Shorthand names |
 | Runtime model selection | openclaw (`src/agents/model-selection.ts`) | Which provider handles a given request |
-| **Usage policy** | **lobsterBucket** (`PLAYBOOK.md`, `GOVERNANCE.md`) | "Use local for routine tasks", "Don't burn o3 tokens on formatting" |
+| **Usage policy** | **lobsterBucket** (`PLAYBOOK.md`, `GOVERNANCE.md`) | "Use bulk for routine tasks", "Reserve code tier for PRs" |
 | **Cost governance** | **lobsterBucket** | Monthly budget caps, escalation rules |
 | **Task-to-tier mapping** | **lobsterBucket** | Which categories of work get which tier |
 

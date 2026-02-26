@@ -59,8 +59,9 @@
         "permissions": false
       },
 
-      "activity": "Listening for !brock",
-      "activityType": 2,
+      "_status_note": "Brock can change his own status/activity at runtime via presence tools (actions.presence is true). The values below are just the initial boot state. SOUL.md encourages him to express personality through status updates — let him be creative.",
+      "activity": "waking up...",
+      "activityType": 4,
       "status": "online",
 
       "guilds": {
@@ -132,13 +133,13 @@
           "trigger_prefix": "!brock",
           "trigger_mention": true,
           "commands": [
-            { "name": "status",   "model_tier": "fast",   "cooldown_seconds": 30 },
-            { "name": "brief",    "model_tier": "fast",   "cooldown_seconds": 300 },
-            { "name": "research", "model_tier": "strong", "cooldown_seconds": 60 },
-            { "name": "jobs",     "model_tier": "fast",   "cooldown_seconds": 300 },
-            { "name": "task",     "model_tier": "fast",   "cooldown_seconds": 10 },
-            { "name": "review",   "model_tier": "strong", "cooldown_seconds": 60 },
-            { "name": "help",     "model_tier": "fast",   "cooldown_seconds": 10 }
+            { "name": "status",   "model_tier": "bulk",      "cooldown_seconds": 30 },
+            { "name": "brief",    "model_tier": "bulk",      "cooldown_seconds": 300 },
+            { "name": "research", "model_tier": "reasoning", "cooldown_seconds": 60 },
+            { "name": "jobs",     "model_tier": "bulk",      "cooldown_seconds": 300 },
+            { "name": "task",     "model_tier": "bulk",      "cooldown_seconds": 10 },
+            { "name": "review",   "model_tier": "code",      "cooldown_seconds": 60 },
+            { "name": "help",     "model_tier": "bulk",      "cooldown_seconds": 10 }
           ]
         },
         "behavior": {
