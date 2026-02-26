@@ -29,6 +29,7 @@ type AuthChoiceFlagOptions = Pick<
   | "opencodeZenApiKey"
   | "xaiApiKey"
   | "litellmApiKey"
+  | "deepseekApiKey"
   | "qianfanApiKey"
   | "volcengineApiKey"
   | "byteplusApiKey"

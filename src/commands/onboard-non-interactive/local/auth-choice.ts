@@ -12,6 +12,7 @@ import { applyPrimaryModel } from "../../model-picker.js";
 import {
   applyAuthProfileConfig,
   applyCloudflareAiGatewayConfig,
+  applyDeepSeekConfig,
   applyKilocodeConfig,
   applyQianfanConfig,
   applyKimiCodeConfig,
@@ -34,6 +35,7 @@ import {
   applyZaiConfig,
   setAnthropicApiKey,
   setCloudflareAiGatewayConfig,
+  setDeepSeekApiKey,
   setQianfanApiKey,
   setGeminiApiKey,
   setKilocodeApiKey,
@@ -375,6 +377,29 @@ export async function applyNonInteractiveAuthChoice(params: {
       runtime.log(`Saved BYTEPLUS_API_KEY to ${shortenHomePath(result.path)}`);
     }
     return applyPrimaryModel(nextConfig, "byteplus-plan/ark-code-latest");
+  }
+
+  if (authChoice === "deepseek-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "deepseek",
+      cfg: baseConfig,
+      flagValue: opts.deepseekApiKey,
+      flagName: "--deepseek-api-key",
+      envVar: "DEEPSEEK_API_KEY",
+      runtime,
+    });
+    if (!resolved) {
+      return null;
+    }
+    if (resolved.source !== "profile") {
+      setDeepSeekApiKey(resolved.key);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "deepseek:default",
+      provider: "deepseek",
+      mode: "api_key",
+    });
+    return applyDeepSeekConfig(nextConfig);
   }
 
   if (authChoice === "qianfan-api-key") {

@@ -22,6 +22,7 @@ type OnboardProviderAuthOptionKey = keyof Pick<
   | "opencodeZenApiKey"
   | "xaiApiKey"
   | "litellmApiKey"
+  | "deepseekApiKey"
   | "qianfanApiKey"
   | "volcengineApiKey"
   | "byteplusApiKey"
@@ -176,6 +177,13 @@ export const ONBOARD_PROVIDER_AUTH_FLAGS: ReadonlyArray<OnboardProviderAuthFlag>
     cliFlag: "--litellm-api-key",
     cliOption: "--litellm-api-key <key>",
     description: "LiteLLM API key",
+  },
+  {
+    optionKey: "deepseekApiKey",
+    authChoice: "deepseek-api-key",
+    cliFlag: "--deepseek-api-key",
+    cliOption: "--deepseek-api-key <key>",
+    description: "DeepSeek API key",
   },
   {
     optionKey: "qianfanApiKey",

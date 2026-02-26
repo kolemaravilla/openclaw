@@ -48,6 +48,7 @@ export type AuthChoice =
   | "mistral-api-key"
   | "volcengine-api-key"
   | "byteplus-api-key"
+  | "deepseek-api-key"
   | "qianfan-api-key"
   | "custom-api-key"
   | "skip";
@@ -74,6 +75,7 @@ export type AuthChoiceGroupId =
   | "qwen"
   | "together"
   | "huggingface"
+  | "deepseek"
   | "qianfan"
   | "xai"
   | "volcengine"
@@ -130,6 +132,7 @@ export type OnboardOptions = {
   xaiApiKey?: string;
   volcengineApiKey?: string;
   byteplusApiKey?: string;
+  deepseekApiKey?: string;
   qianfanApiKey?: string;
   customBaseUrl?: string;
   customApiKey?: string;
