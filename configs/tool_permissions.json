@@ -1,0 +1,70 @@
+{
+  "$schema": "https://open-claw.bot/schemas/openclaw-tool-permissions.json",
+  "_comment": [
+    "Tool-level permission scopes for Brock.",
+    "This file defines what HTTP endpoints Brock is allowed to call and how.",
+    "",
+    "For Nuvoka-specific access logic (row limits, model routing, git policy),",
+    "see configs/nuvoka_access.json."
+  ],
+
+  "permissions": {
+    "http.get": {
+      "allowed": [
+        {
+          "scope": "nuvoka-postgrest",
+          "pattern": "${NUVOKA_SUPABASE_URL}/rest/v1/*",
+          "auth": {
+            "header": "apikey",
+            "key": "${NUVOKA_SUPABASE_ANON_KEY}"
+          },
+          "constraints": {
+            "maxRows": 500,
+            "requireSelect": true,
+            "_comment": "Always include ?select= to avoid pulling entire tables. Limit param required."
+          },
+          "preAuthorized": true,
+          "approvalRequired": false
+        }
+      ]
+    },
+
+    "http.post": {
+      "allowed": [
+        {
+          "scope": "nuvoka-edge-function",
+          "pattern": "${NUVOKA_FUNCTION_URL}",
+          "auth": {
+            "header": "Authorization",
+            "prefix": "Bearer",
+            "key": "${NUVOKA_AGENT_API_KEY}"
+          },
+          "preAuthorized": true,
+          "approvalRequired": false,
+          "_comment": "Server-side blocklist governs which tables accept writes. No per-request operator approval needed."
+        }
+      ],
+      "denied": [
+        {
+          "scope": "nuvoka-postgrest-direct-write",
+          "pattern": "${NUVOKA_SUPABASE_URL}/rest/v1/*",
+          "reason": "Direct PostgREST writes are forbidden. All Nuvoka mutations must go through the edge function."
+        }
+      ]
+    },
+
+    "git.clone": {
+      "allowed": [
+        { "repo": "Iron-Lion-International/nuvoka" },
+        { "repo": "kolemaravilla/openclaw" }
+      ]
+    },
+
+    "git.pull_request": {
+      "allowed": [
+        { "repo": "Iron-Lion-International/nuvoka" },
+        { "repo": "kolemaravilla/openclaw" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://open-claw.bot/schemas/openclaw-nuvoka-access.json",
+  "_comment": [
+    "Authoritative access configuration for Brock's Nuvoka integration.",
+    "Governs how Brock reads from and writes to the Nuvoka Supabase project.",
+    "",
+    "Read path:  http.get → NUVOKA_SUPABASE_URL/rest/v1/* (anon key, PostgREST)",
+    "Write path: http.post → NUVOKA_FUNCTION_URL (edge function, agent API key)",
+    "Direct PostgREST writes are FORBIDDEN — all mutations go through the edge function.",
+    "",
+    "Required env vars: NUVOKA_SUPABASE_URL, NUVOKA_SUPABASE_ANON_KEY,",
+    "                    NUVOKA_AGENT_API_KEY, NUVOKA_FUNCTION_URL",
+    "",
+    "See also:",
+    "  configs/tool_permissions.json  — tool-level http.get/post scopes",
+    "  runbooks/nuvoka_db.md          — step-by-step DB access procedures",
+    "  skills/db-advisor/SKILL.md     — schema analysis skill spec"
+  ],
+
+  "nuvoka": {
+    "read": {
+      "method": "postgrest",
+      "baseUrl": "${NUVOKA_SUPABASE_URL}/rest/v1",
+      "auth": {
+        "type": "api-key",
+        "header": "apikey",
+        "key": "${NUVOKA_SUPABASE_ANON_KEY}"
+      },
+      "limits": {
+        "maxRows": 500,
+        "defaultRows": 100,
+        "timeout_ms": 10000
+      },
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      "_notes": "Read-only. RLS policies on the Supabase side enforce row-level access. The anon key can only see what the public/anon role is granted."
+    },
+
+    "write": {
+      "method": "edge-function",
+      "baseUrl": "${NUVOKA_FUNCTION_URL}",
+      "auth": {
+        "type": "api-key",
+        "header": "Authorization",
+        "prefix": "Bearer",
+        "key": "${NUVOKA_AGENT_API_KEY}"
+      },
+      "preAuthorized": true,
+      "timeout_ms": 15000,
+      "blocklist": {
+        "_comment": "The server-side edge function maintains its own blocklist of tables that reject writes. Brock does not need to know the blocklist — the function will return 403 for blocked tables. This is defense-in-depth: even if Brock tries to write to a blocked table, the server says no.",
+        "enforcement": "server-side"
+      },
+      "_notes": "All writes go through the edge function. Brock never writes directly to PostgREST. The edge function handles validation, audit logging, and blocklist enforcement."
+    },
+
+    "forbidden": [
+      {
+        "pattern": "http.post to ${NUVOKA_SUPABASE_URL}/rest/v1/*",
+        "reason": "Direct PostgREST writes are never allowed. All mutations go through the edge function."
+      }
+    ],
+
+    "git": {
+      "repo": "Iron-Lion-International/nuvoka",
+      "access": "clone, read, write",
+      "branchPolicy": "feature-branches-only",
+      "tools": ["git.clone", "git.read", "git.write", "git.pull_request"],
+      "_notes": "Brock has full git access to the Nuvoka repo. Feature branches only — never push to main/master directly. The git.pull_request tool is authorized."
+    },
+
+    "modelRouting": {
+      "strong": {
+        "tasks": [
+          "schema analysis",
+          "db_advisor skill",
+          "migration proposals",
+          "data model design",
+          "index optimization",
+          "RLS policy review"
+        ],
+        "fallbackToFast": false,
+        "_comment": "These tasks require strong reasoning. Never fall back to fast models — fail loudly instead."
+      },
+      "fast": {
+        "tasks": [
+          "simple reads for briefings",
+          "content pipeline queries",
+          "row counts and status checks",
+          "dashboard data fetches"
+        ],
+        "fallbackToStrong": true,
+        "_comment": "These are lightweight. Fast model is fine. Can escalate to strong if needed."
+      }
+    }
+  }
+}
