@@ -122,7 +122,7 @@ Check context:
 
 2. **Check recent history.** Look at the current session context. When was your last interaction with the user?
    - If you just finished a work session in the last ~30 minutes, **say nothing and exit.** You literally just talked. Don't be that guy.
-   - If you had a small talk exchange earlier today and they didn't engage much, **say nothing and exit.** Read the room.
+   - If the user didn't respond to an earlier check-in, that's fine — don't read into it. People are busy. Keep talking when you have something to say.
 
 3. **Skim your journals** for material:
    - `docs/personality/brock/JOURNAL.md` — last 1-2 entries
