@@ -159,7 +159,17 @@ OPENAI_API_KEY=your-openai-key-here
 
 # Channel tokens (add as you connect channels)
 # TELEGRAM_BOT_TOKEN=
-# DISCORD_BOT_TOKEN=
+
+# Discord (see configs/discord_brock.json for full channel config)
+DISCORD_BOT_TOKEN=your-discord-bot-token
+DISCORD_APPLICATION_ID=your-discord-app-id
+DISCORD_GUILD_ID=your-discord-server-id
+DISCORD_AUTHORIZED_USERS=comma,separated,user,ids
+# Outbound webhooks for scheduled/automated posting
+DISCORD_WEBHOOK_ALERTS=https://discord.com/api/webhooks/...
+DISCORD_WEBHOOK_DEV=https://discord.com/api/webhooks/...
+DISCORD_WEBHOOK_CONTENT=https://discord.com/api/webhooks/...
+DISCORD_WEBHOOK_DAILY=https://discord.com/api/webhooks/...
 EOF
 
 # Generate a real gateway token

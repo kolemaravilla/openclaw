@@ -132,8 +132,35 @@ For convenience in configs and CLI:
 | `local` | local/glm-5 | Whatever's running in Ollama |
 | `gpt` | openai/gpt-4o | General backup |
 | `o3` | openai/o3 | Reasoning backup (expensive) |
+| `opus` | anthropic/claude-opus-4-6 | Optional, needs subscription |
+| `sonnet` | anthropic/claude-sonnet-4-6 | Optional, good value |
 
 Use aliases in agent configs and CLI commands: `openclaw agent --model glm5 --message "..."`.
+
+---
+
+## Command-to-Tier Routing (Discord)
+
+When Brock receives commands via Discord (`!brock <command>` or `@Brock <command>`), the model tier selection determines cost and quality. This mapping is defined by lobsterBucket's governance rules, but openclaw needs to know the tier assignments to route correctly.
+
+| Command | Model Tier | Why | Cooldown |
+|---------|-----------|-----|----------|
+| `status` | fast (local) | Simple state query, no reasoning needed | 30s |
+| `brief` | fast (local) | Formatting/summarization of pre-gathered data | 300s |
+| `research <topic>` | **strong** (zai) | Deep research requires reasoning + web search | 60s |
+| `jobs` | fast (local) | Structured search against known criteria | 300s |
+| `task <desc>` | fast (local) | Ad hoc routing, ACK is fast then async processing | 10s |
+| `review <PR#>` | **strong** (zai) | Code review requires deep analysis | 60s |
+| `help` | fast (local) | Static response, minimal inference | 10s |
+
+**How this works in practice:**
+- lobsterBucket's `PLAYBOOK.md` defines which commands exist and their tier assignments
+- When a command arrives, Brock's session selects the model tier based on the command type
+- openclaw handles the actual model routing (fast → `local/glm-5`, strong → `zai/glm-5`)
+- If the selected tier is unavailable, openclaw's failover chain kicks in automatically
+- Cooldowns are enforced by lobsterBucket governance, not by openclaw's rate limiter
+
+**Cost impact:** Most commands use the fast/local tier ($0). Only `research` and `review` hit the strong tier (z.ai API). At typical usage (~10 commands/day), the Discord command overhead is negligible — under $1/mo.
 
 ---
 
