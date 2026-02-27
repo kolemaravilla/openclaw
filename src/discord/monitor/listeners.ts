@@ -8,11 +8,14 @@ import {
   type User,
 } from "@buape/carbon";
 import { danger, logVerbose } from "../../globals.js";
+import { appendFeedback, resolveReactionSentiment } from "../../feedback/index.js";
+import type { FeedbackEntry } from "../../feedback/types.js";
 import { formatDurationSeconds } from "../../infra/format-time/format-duration.ts";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { readChannelAllowFromStore } from "../../pairing/pairing-store.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
+import { loadSessionStore, resolveStorePath } from "../../config/sessions.js";
 import { resolveDmGroupAccessWithLists } from "../../security/dm-policy-shared.js";
 import {
   isDiscordGroupAllowedByPolicy,
@@ -297,6 +300,68 @@ async function authorizeDiscordReactionIngress(
   return { allowed: true };
 }
 
+/**
+ * Record a reaction on a bot message to the feedback store.
+ * Fire-and-forget: errors are swallowed so feedback never blocks the listener.
+ */
+function recordReactionFeedback(params: {
+  action: "added" | "removed";
+  emoji: string;
+  messageId: string;
+  channelId: string;
+  userId: string;
+  userTag: string;
+  guildId?: string;
+  accountId: string;
+  sessionKey: string;
+  cfg: LoadedConfig;
+}) {
+  // Only record "added" — removals cancel out in the log anyway
+  if (params.action !== "added") return;
+
+  const sentiment = resolveReactionSentiment(params.emoji);
+
+  // Look up current model from session store (best-effort snapshot)
+  let model: string | undefined;
+  let provider: string | undefined;
+  let modelLabel: string | undefined;
+  try {
+    const storePath = resolveStorePath(params.cfg.session?.store);
+    const store = loadSessionStore(storePath);
+    const entry = store[params.sessionKey];
+    if (entry) {
+      model = entry.model;
+      provider = entry.modelProvider;
+      if (provider && model) modelLabel = `${provider}/${model}`;
+      else if (model) modelLabel = model;
+    }
+  } catch {
+    // session lookup failure is non-fatal
+  }
+
+  const entry: FeedbackEntry = {
+    ts: Date.now(),
+    kind: "reaction",
+    sentiment,
+    emoji: params.emoji,
+    messageId: params.messageId,
+    channel: "discord",
+    channelId: params.channelId,
+    accountId: params.accountId,
+    guildId: params.guildId,
+    userId: params.userId,
+    userTag: params.userTag,
+    sessionKey: params.sessionKey,
+    model,
+    provider,
+    modelLabel,
+    source: "discord-reaction",
+  };
+
+  // Fire-and-forget
+  appendFeedback(entry).catch(() => {});
+}
+
 async function handleDiscordReactionEvent(params: {
   data: DiscordReactionEvent;
   client: Client;
@@ -402,9 +467,8 @@ async function handleDiscordReactionEvent(params: {
       reactionBase = { baseText, contextKey };
       return reactionBase;
     };
-    const emitReaction = (text: string, parentPeerId?: string) => {
-      const { contextKey } = resolveReactionBase();
-      const route = resolveAgentRoute({
+    const resolveRoute = (parentPeerId?: string) =>
+      resolveAgentRoute({
         cfg: params.cfg,
         channel: "discord",
         accountId: params.accountId,
@@ -416,6 +480,9 @@ async function handleDiscordReactionEvent(params: {
         },
         parentPeer: parentPeerId ? { kind: "channel", id: parentPeerId } : undefined,
       });
+    const emitReaction = (text: string, parentPeerId?: string) => {
+      const { contextKey } = resolveReactionBase();
+      const route = resolveRoute(parentPeerId);
       enqueueSystemEvent(text, {
         sessionKey: route.sessionKey,
         contextKey,
@@ -437,9 +504,25 @@ async function handleDiscordReactionEvent(params: {
       });
     const emitReactionWithAuthor = (message: { author?: User } | null) => {
       const { baseText } = resolveReactionBase();
+      const emojiLabel = formatDiscordReactionEmoji(data.emoji);
       const authorLabel = message?.author ? formatDiscordUserTag(message.author) : undefined;
       const text = authorLabel ? `${baseText} from ${authorLabel}` : baseText;
       emitReaction(text, parentId);
+
+      // Record feedback for reactions on bot messages (sentiment tracking)
+      const route = resolveRoute(parentId);
+      recordReactionFeedback({
+        action,
+        emoji: emojiLabel,
+        messageId: data.message_id,
+        channelId: data.channel_id,
+        userId: user.id,
+        userTag: formatDiscordUserTag(user),
+        guildId: data.guild_id ?? undefined,
+        accountId: params.accountId,
+        sessionKey: route.sessionKey,
+        cfg: params.cfg,
+      });
     };
     const loadThreadParentInfo = async () => {
       if (!parentId) {
