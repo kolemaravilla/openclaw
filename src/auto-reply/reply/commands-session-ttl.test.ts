@@ -53,8 +53,8 @@ function createFakeThreadBindingManager(binding: FakeBinding | null) {
 
 describe("/session ttl", () => {
   beforeEach(() => {
-    hoisted.getThreadBindingManagerMock.mockClear();
-    hoisted.setThreadBindingTtlBySessionKeyMock.mockClear();
+    hoisted.getThreadBindingManagerMock.mockReset();
+    hoisted.setThreadBindingTtlBySessionKeyMock.mockReset();
     vi.useRealTimers();
   });
 

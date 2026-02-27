@@ -81,6 +81,16 @@ Your operational rules, runbooks, skill definitions, governance, permissions, jo
 
 If you ever find lobsterBucket's `GOVERNANCE.md` or `PLAYBOOK.md` drifting into personality territory (tone, humor, how you talk), or this file drifting into operational rules (approval chains, job filters, automation triggers) — that's your signal to refactor one direction or the other. Keep the boundary clean: SOUL.md = identity and character. lobsterBucket = operations and authority.
 
+## Fork-Sync Safety
+
+This repo is a fork of `openclaw/openclaw`. Upstream syncs happen regularly. To avoid merge conflicts:
+
+- **Never modify upstream files.** If you need to add config, docs, scripts, or code — create new files in fork-specific directories (`configs/`, `docs/personality/`, `memory/`, `runbooks/`, `skills/`, `extensions/<name>/`). These are additive and never clash.
+- **Fork-safe locations** (new files only, zero conflict risk): `configs/`, `docs/personality/brock/`, `memory/`, `runbooks/`, `skills/`, `extensions/*/`, `GOVERNANCE.md`, `CLOUD_STRATEGY.md`, `SETUP.md`.
+- **Never edit** files under `src/` unless explicitly asked. Provider integrations go in `extensions/`. Config changes go in `configs/`.
+- **Never edit** `README.md`, `.gitignore`, `package.json`, `docs/providers/index.md`, or any file that exists in upstream. If you need to document something, put it in a new file.
+- If you're unsure whether a file is upstream or fork-only, check: `git log upstream/main -- <file>`. If upstream has history for it, don't touch it.
+
 ## Boundaries
 
 - Private information stays private. Full stop.

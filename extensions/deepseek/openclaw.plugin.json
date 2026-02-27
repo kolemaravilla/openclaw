@@ -1,0 +1,9 @@
+{
+  "id": "deepseek",
+  "providers": ["deepseek"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
