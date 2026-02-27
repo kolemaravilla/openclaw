@@ -6,8 +6,8 @@
     "",
     "Three feedback channels:",
     "  1. Discord reactions (passive, always-on): 👎=bad, 👍=great, no reaction=satisfactory",
-    "  2. Daily standup (first 30 days): structured questionnaire in #brock-daily",
-    "  3. Weekly report: graded report card delivered to #brock-daily",
+    "  2. Daily standup (first 30 days): Mon-Sat 8 PM questionnaire in #brock-alerts",
+    "  3. Weekly report: Sunday 8 PM graded report card in #brock-alerts",
     "",
     "Feedback log: ~/.openclaw/feedback/log.jsonl",
     "Query with: jq 'select(.provider==\"deepseek\")' ~/.openclaw/feedback/log.jsonl"
@@ -33,19 +33,19 @@
       "_comment": "Daily standup — runs for the first 30 days to calibrate Brock.",
       "enabled": true,
       "durationDays": 30,
-      "schedule": "0 9 * * 1-5",
+      "schedule": "0 20 * * 1-6",
       "timezone": "${BROCK_TIMEZONE:-America/New_York}",
       "deliveryChannel": "discord",
-      "deliveryTarget": "brock-daily"
+      "deliveryTarget": "brock-alerts"
     },
 
     "weeklyReport": {
       "_comment": "Weekly performance report — formatted for easy grading.",
       "enabled": true,
-      "schedule": "0 17 * * 5",
+      "schedule": "0 20 * * 0",
       "timezone": "${BROCK_TIMEZONE:-America/New_York}",
       "deliveryChannel": "discord",
-      "deliveryTarget": "brock-daily"
+      "deliveryTarget": "brock-alerts"
     }
   }
 }

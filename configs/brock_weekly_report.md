@@ -12,7 +12,7 @@ structured so the operator can easily reply with grades and commentary.
 
 ## Report Format
 
-Post the report to #brock-daily using this exact structure:
+Post the report to #brock-alerts using this exact structure:
 
 ---
 

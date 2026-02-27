@@ -5,19 +5,19 @@
     "Or add them manually via the CLI.",
     "",
     "Jobs:",
-    "  1. brock-daily-standup: Weekday 9 AM standup (first 30 days)",
-    "  2. brock-weekly-report: Friday 5 PM weekly performance report"
+    "  1. brock-daily-standup: Mon-Sat 8 PM standup (first 30 days)",
+    "  2. brock-weekly-report: Sunday 8 PM weekly performance report"
   ],
 
   "jobs": [
     {
       "id": "brock-daily-standup",
       "name": "Daily Standup",
-      "description": "Weekday standup check-in posted to #brock-daily for operator calibration",
+      "description": "Mon-Sat 8 PM standup check-in posted to #brock-alerts for operator calibration",
       "enabled": true,
       "schedule": {
         "kind": "cron",
-        "expr": "0 9 * * 1-5",
+        "expr": "0 20 * * 1-6",
         "tz": "America/New_York",
         "staggerMs": 0
       },
@@ -25,24 +25,24 @@
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "Run the daily standup. Follow the instructions in configs/brock_daily_standup.md exactly. Post the standup to #brock-daily.",
+        "message": "Run the daily standup. Follow the instructions in configs/brock_daily_standup.md exactly. Post the standup to #brock-alerts.",
         "thinking": "low"
       },
       "delivery": {
         "mode": "announce",
         "channel": "discord",
-        "to": "brock-daily",
+        "to": "brock-alerts",
         "bestEffort": true
       }
     },
     {
       "id": "brock-weekly-report",
       "name": "Weekly Performance Report",
-      "description": "Friday EOD performance report with grade card posted to #brock-daily",
+      "description": "Sunday 8 PM performance report with grade card posted to #brock-alerts",
       "enabled": true,
       "schedule": {
         "kind": "cron",
-        "expr": "0 17 * * 5",
+        "expr": "0 20 * * 0",
         "tz": "America/New_York",
         "staggerMs": 0
       },
@@ -50,14 +50,14 @@
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "Generate the weekly performance report. Follow the instructions in configs/brock_weekly_report.md exactly. Post the report to #brock-daily.",
+        "message": "Generate the weekly performance report. Follow the instructions in configs/brock_weekly_report.md exactly. Post the report to #brock-alerts.",
         "model": "anthropic/claude-sonnet-4-6",
         "thinking": "medium"
       },
       "delivery": {
         "mode": "announce",
         "channel": "discord",
-        "to": "brock-daily",
+        "to": "brock-alerts",
         "bestEffort": true
       }
     }

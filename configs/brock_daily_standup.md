@@ -1,7 +1,7 @@
 # Daily Standup — Cron Job Prompt
 
 Run a daily standup check-in for the operator during the onboarding/calibration
-period (first 30 days). Post to #brock-daily.
+period (first 30 days). Post to #brock-alerts.
 
 ## Instructions
 
@@ -12,7 +12,7 @@ period (first 30 days). Post to #brock-daily.
 
 ## Standup Format
 
-Post to #brock-daily using this structure:
+Post to #brock-alerts using this structure:
 
 ---
 
