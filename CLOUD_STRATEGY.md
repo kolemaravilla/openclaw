@@ -132,9 +132,9 @@ Not in the default tier hierarchy but useful if you have the hardware.
 ### Default chain (coding and general):
 
 ```
-Primary:    zai/glm-5
+Primary:    kimi-coding/k2p5
     ↓ (if unavailable)
-Fallback 1: moonshot/kimi-k2-thinking
+Fallback 1: zai/glm-5
     ↓ (if unavailable)
 Fallback 2: deepseek/deepseek-chat
     ↓ (if unavailable)
@@ -144,32 +144,38 @@ Fallback 3: openai/gpt-4o
 ### Bulk/fast chain (cheap tasks):
 
 ```
-Primary:    deepseek/deepseek-chat
+Primary:    moonshot/kimi-k2.5
     ↓ (if unavailable)
-Fallback 1: moonshot/kimi-k2-thinking
+Fallback 1: zai/glm-4.7-flash
     ↓ (if unavailable)
-Fallback 2: openai/gpt-4o
+Fallback 2: deepseek/deepseek-chat
+    ↓ (if unavailable)
+Fallback 3: openai/gpt-4o
 ```
 
 ### Reasoning chain (hard problems):
 
 ```
-Primary:    moonshot/kimi-k2-thinking
+Primary:    moonshot/kimi-k2.5
     ↓ (if unavailable)
 Fallback 1: zai/glm-5
     ↓ (if unavailable)
-Fallback 2: openai/o3
+Fallback 2: deepseek/deepseek-reasoner
+    ↓ (if unavailable)
+Fallback 3: openai/o3
 ```
 
 ### Image chain (vision tasks):
 
 ```
-Primary:    openai/gpt-4o
+Primary:    moonshot/kimi-k2.5
     ↓ (if unavailable)
-Fallback:   openai/o3
+Fallback 1: kimi-coding/k2p5
+    ↓ (if unavailable)
+Fallback 2: openai/gpt-4o
 ```
 
-GLM-5, DeepSeek, and Kimi K2 are all text-only via API. Vision tasks must route to OpenAI (or optionally GLM-4.6V / Kimi K2.5 if added later).
+Kimi K2.5 and Kimi for Coding (K2.5) both support multimodal input. GLM-5, DeepSeek, and Kimi K2 Thinking are text-only via API. OpenAI remains a fallback for vision tasks.
 
 Failover is automatic — openclaw's model selection layer handles it.
 
