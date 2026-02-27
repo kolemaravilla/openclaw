@@ -272,13 +272,22 @@ Create `~/.openclaw/openclaw.json`. This is a minimal starter config — the ful
           }
         ]
       },
-      // Bulk tier fallback: DeepSeek
+      // DeepSeek: code fallback + bulk
       "deepseek": {
         "baseUrl": "https://api.deepseek.com/v1",
         "api": "openai-completions",
         "auth": "api-key",
         "apiKey": "${DEEPSEEK_API_KEY}",
         "models": [
+          {
+            "id": "deepseek-coder",
+            "name": "DeepSeek Coder (code fallback)",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": { "input": 0.28, "output": 0.42, "cacheRead": 0.028, "cacheWrite": 0.28 },
+            "contextWindow": 128000,
+            "maxTokens": 8192
+          },
           {
             "id": "deepseek-chat",
             "name": "DeepSeek V3.2 Chat (cheap bulk)",
@@ -333,7 +342,7 @@ Create `~/.openclaw/openclaw.json`. This is a minimal starter config — the ful
       "workspace": "~/.openclaw/workspace",
       "model": {
         "primary": "kimi-coding/k2p5",
-        "fallbacks": ["zai/glm-5", "deepseek/deepseek-chat", "openai/gpt-4o"]
+        "fallbacks": ["zai/glm-5", "deepseek/deepseek-coder", "openai/gpt-4o"]
       },
       "bulkModel": {
         "primary": "moonshot/kimi-k2.5",
@@ -348,6 +357,7 @@ Create `~/.openclaw/openclaw.json`. This is a minimal starter config — the ful
         "moonshot/kimi-k2.5":        { "alias": "kimi-v", "streaming": true },
         "moonshot/kimi-k2-thinking": { "alias": "kimi",  "streaming": true },
         "zai/glm-5":                 { "alias": "glm5",  "streaming": true },
+        "deepseek/deepseek-coder":   { "alias": "dsc",   "streaming": true },
         "deepseek/deepseek-chat":    { "alias": "ds",    "streaming": true },
         "openai/gpt-4o":             { "alias": "gpt",   "streaming": true },
         "local/glm-4.7":             { "alias": "local", "streaming": true }
