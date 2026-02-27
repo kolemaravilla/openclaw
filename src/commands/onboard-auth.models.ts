@@ -1,8 +1,4 @@
-import {
-  DEEPSEEK_DEFAULT_MODEL_ID,
-  QIANFAN_BASE_URL,
-  QIANFAN_DEFAULT_MODEL_ID,
-} from "../agents/models-config.providers.js";
+import { QIANFAN_BASE_URL, QIANFAN_DEFAULT_MODEL_ID } from "../agents/models-config.providers.js";
 import type { ModelDefinitionConfig } from "../config/types.js";
 import {
   KILOCODE_DEFAULT_CONTEXT_WINDOW,
@@ -34,10 +30,6 @@ export const MOONSHOT_DEFAULT_CONTEXT_WINDOW = 256000;
 export const MOONSHOT_DEFAULT_MAX_TOKENS = 8192;
 export const KIMI_CODING_MODEL_ID = "k2p5";
 export const KIMI_CODING_MODEL_REF = `kimi-coding/${KIMI_CODING_MODEL_ID}`;
-
-export { DEEPSEEK_DEFAULT_MODEL_ID };
-export const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
-export const DEEPSEEK_DEFAULT_MODEL_REF = `deepseek/${DEEPSEEK_DEFAULT_MODEL_ID}`;
 
 export { QIANFAN_BASE_URL, QIANFAN_DEFAULT_MODEL_ID };
 export const QIANFAN_DEFAULT_MODEL_REF = `qianfan/${QIANFAN_DEFAULT_MODEL_ID}`;

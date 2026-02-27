@@ -174,17 +174,6 @@ const VLLM_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
-const DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1";
-export const DEEPSEEK_DEFAULT_MODEL_ID = "deepseek-chat";
-const DEEPSEEK_DEFAULT_CONTEXT_WINDOW = 65536;
-const DEEPSEEK_DEFAULT_MAX_TOKENS = 8192;
-const DEEPSEEK_DEFAULT_COST = {
-  input: 0.27,
-  output: 1.1,
-  cacheRead: 0.07,
-  cacheWrite: 0.27,
-};
-
 export const QIANFAN_BASE_URL = "https://qianfan.baidubce.com/v2";
 export const QIANFAN_DEFAULT_MODEL_ID = "deepseek-v3.2";
 const QIANFAN_DEFAULT_CONTEXT_WINDOW = 98304;
@@ -801,38 +790,6 @@ export function buildQianfanProvider(): ProviderConfig {
   };
 }
 
-export function buildDeepSeekProvider(): ProviderConfig {
-  return {
-    baseUrl: DEEPSEEK_BASE_URL,
-    api: "openai-completions",
-    models: [
-      {
-        id: DEEPSEEK_DEFAULT_MODEL_ID,
-        name: "DeepSeek V3",
-        reasoning: false,
-        input: ["text"],
-        cost: DEEPSEEK_DEFAULT_COST,
-        contextWindow: DEEPSEEK_DEFAULT_CONTEXT_WINDOW,
-        maxTokens: DEEPSEEK_DEFAULT_MAX_TOKENS,
-      },
-      {
-        id: "deepseek-reasoner",
-        name: "DeepSeek R1",
-        reasoning: true,
-        input: ["text"],
-        cost: {
-          input: 0.55,
-          output: 2.19,
-          cacheRead: 0.14,
-          cacheWrite: 0.55,
-        },
-        contextWindow: 65536,
-        maxTokens: 8192,
-      },
-    ],
-  };
-}
-
 export function buildNvidiaProvider(): ProviderConfig {
   return {
     baseUrl: NVIDIA_BASE_URL,
@@ -1049,13 +1006,6 @@ export async function resolveImplicitProviders(params: {
       ...hfProvider,
       apiKey: huggingfaceKey,
     };
-  }
-
-  const deepseekKey =
-    resolveEnvApiKeyVarName("deepseek") ??
-    resolveApiKeyFromProfiles({ provider: "deepseek", store: authStore });
-  if (deepseekKey) {
-    providers.deepseek = { ...buildDeepSeekProvider(), apiKey: deepseekKey };
   }
 
   const qianfanKey =
