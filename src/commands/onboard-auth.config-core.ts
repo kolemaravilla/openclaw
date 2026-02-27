@@ -4,12 +4,10 @@ import {
   HUGGINGFACE_MODEL_CATALOG,
 } from "../agents/huggingface-models.js";
 import {
-  buildDeepSeekProvider,
   buildKilocodeProvider,
   buildKimiCodingProvider,
   buildQianfanProvider,
   buildXiaomiProvider,
-  DEEPSEEK_DEFAULT_MODEL_ID,
   QIANFAN_DEFAULT_MODEL_ID,
   XIAOMI_DEFAULT_MODEL_ID,
 } from "../agents/models-config.providers.js";
@@ -34,7 +32,6 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { ModelApi } from "../config/types.models.js";
 import { KILOCODE_BASE_URL } from "../providers/kilocode-shared.js";
 import {
-  DEEPSEEK_DEFAULT_MODEL_REF,
   HUGGINGFACE_DEFAULT_MODEL_REF,
   KILOCODE_DEFAULT_MODEL_REF,
   MISTRAL_DEFAULT_MODEL_REF,
@@ -68,7 +65,6 @@ import {
   buildZaiModelDefinition,
   buildMoonshotModelDefinition,
   buildXaiModelDefinition,
-  DEEPSEEK_BASE_URL,
   MISTRAL_BASE_URL,
   MISTRAL_DEFAULT_MODEL_ID,
   QIANFAN_BASE_URL,
@@ -540,28 +536,6 @@ export function applyAuthProfileConfig(
       ...(order ? { order } : {}),
     },
   };
-}
-
-export function applyDeepSeekProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
-  const models = { ...cfg.agents?.defaults?.models };
-  models[DEEPSEEK_DEFAULT_MODEL_REF] = {
-    ...models[DEEPSEEK_DEFAULT_MODEL_REF],
-    alias: models[DEEPSEEK_DEFAULT_MODEL_REF]?.alias ?? "DeepSeek",
-  };
-  const defaultProvider = buildDeepSeekProvider();
-  return applyProviderConfigWithDefaultModels(cfg, {
-    agentModels: models,
-    providerId: "deepseek",
-    api: "openai-completions",
-    baseUrl: DEEPSEEK_BASE_URL,
-    defaultModels: defaultProvider.models ?? [],
-    defaultModelId: DEEPSEEK_DEFAULT_MODEL_ID,
-  });
-}
-
-export function applyDeepSeekConfig(cfg: OpenClawConfig): OpenClawConfig {
-  const next = applyDeepSeekProviderConfig(cfg);
-  return applyAgentDefaultModelPrimary(next, DEEPSEEK_DEFAULT_MODEL_REF);
 }
 
 export function applyQianfanProviderConfig(cfg: OpenClawConfig): OpenClawConfig {

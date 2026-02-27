@@ -55,7 +55,6 @@ See [Venice AI](/providers/venice).
 - [Hugging Face (Inference)](/providers/huggingface)
 - [Ollama (local models)](/providers/ollama)
 - [vLLM (local models)](/providers/vllm)
-- [DeepSeek](/providers/deepseek)
 - [Qianfan](/providers/qianfan)
 - [NVIDIA](/providers/nvidia)
 
